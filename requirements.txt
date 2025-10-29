@@ -1,5 +1,3 @@
-# requirements.txt for RK-SYSTEM bot0
-
 python-telegram-bot==20.5
 aiohttp==3.8.5
 nest-asyncio==1.5.8
