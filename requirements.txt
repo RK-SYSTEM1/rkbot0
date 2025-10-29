@@ -1,6 +1,2 @@
-python-telegram-bot==20.4
+python-telegram-bot>=20.4,<20.6
 requests
-
-python-telegram-bot==20.5
-aiohttp==3.8.5
-nest-asyncio==1.5.8
