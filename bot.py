@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import os
 import requests
 from requests.structures import CaseInsensitiveDict
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -8,6 +9,8 @@ from telegram.ext import (
     ApplicationBuilder, CommandHandler, MessageHandler,
     CallbackQueryHandler, ContextTypes, filters
 )
+from flask import Flask
+from threading import Thread
 
 # ---------------- CONFIG ----------------
 BOT_TOKEN = "7719776924:AAGxCXF0as6sGihPkWrlMqmM6A7T2TKEduo"
@@ -21,7 +24,14 @@ MAX_AMOUNT = 500
 # In-memory history
 history = []
 
-# Start command
+# ---------------- Flask App ----------------
+app_flask = Flask(__name__)
+
+@app_flask.route('/')
+def home():
+    return "✅ RK-SYSTEM Bot is Running Successfully!"
+
+# ---------------- Telegram Bot Handlers ----------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != AUTHORIZED_USER_ID:
         return
@@ -34,7 +44,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
-# Callback handler
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -54,7 +63,6 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             msg = "\n".join([f"{h['number']} | Amount: {h['amount']}" for h in history])
             await query.message.reply_text(f"History:\n{msg}")
 
-# Handle messages
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != AUTHORIZED_USER_ID:
         return
@@ -90,7 +98,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             data = '{"msisdn":"%s"}' % number
             try:
                 requests.post(API_URL, headers=HEADERS, data=data)
-                # Save to history
                 history.append({'number': number, 'amount': context.user_data['amount']})
             except Exception as e:
                 await update.message.reply_text(f"Failed for {number}: {e}")
@@ -98,13 +105,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Done sending requests!")
         context.user_data.clear()
 
-# Main
-if __name__ == "__main__":
+# ---------------- Run Bot + Flask ----------------
+def run_bot():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
-    
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    
     print("Bot is running...")
     app.run_polling()
+
+if __name__ == "__main__":
+    # Start Telegram bot in a separate thread
+    Thread(target=run_bot).start()
+
+    # Start Flask server (Render requires PORT)
+    port = int(os.environ.get("PORT", 5000))
+    app_flask.run(host="0.0.0.0", port=port)
